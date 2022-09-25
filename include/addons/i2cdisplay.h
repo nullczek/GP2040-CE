@@ -89,11 +89,21 @@ public:
 	void drawSplashScreen(int splashMode, int splashSpeed);
 	void drawDancepadA(int startX, int startY, int buttonSize, int buttonPadding);
 	void drawDancepadB(int startX, int startY, int buttonSize, int buttonPadding);
+	inline static std::string getSocdAcronym(CARDINAL_SOCDMode cardinalMode);
 	uint8_t ucBackBuffer[1024];
 	OBDISP obd;
 	std::string statusBar;
 	Gamepad* gamepad;
 	Gamepad* pGamepad;
+	private:
+
+	std::string *previousStatusBar = new std::string("");
+	uint_fast8_t scrollPosition = 0;
+	int_fast8_t scrollDirection = 1;
+	int statusBarOffset = 0;
+	int ticks = 0;
+	std::string scrolledStatusBar = "";
+	const uint_fast8_t screenMaxStrLen = 21;
 };
 
 #endif

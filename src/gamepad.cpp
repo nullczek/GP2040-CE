@@ -45,7 +45,7 @@ void Gamepad::setup()
 	mapButtonR3  = new GamepadButtonMapping(boardOptions.pinButtonR3,  GAMEPAD_MASK_R3);
 	mapButtonA1  = new GamepadButtonMapping(boardOptions.pinButtonA1,  GAMEPAD_MASK_A1);
 	mapButtonA2  = new GamepadButtonMapping(boardOptions.pinButtonA2,  GAMEPAD_MASK_A2);
-	
+
 	gamepadMappings = new GamepadButtonMapping *[GAMEPAD_DIGITAL_INPUT_COUNT]
 	{
 		mapDpadUp,   mapDpadDown, mapDpadLeft, mapDpadRight,
@@ -141,11 +141,13 @@ GamepadOptions GamepadStorage::getGamepadOptions()
 	{
 		options.inputMode = InputMode::INPUT_MODE_XINPUT; // Default?
 		options.dpadMode = DpadMode::DPAD_MODE_DIGITAL; // Default?
-#ifdef DEFAULT_SOCD_MODE
-		options.socdMode = DEFAULT_SOCD_MODE;
-#else
+
+		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
+		options.xAxisSocdMode = DEFAULT_SOCD_MODE_X_AXIS;
+		options.yAxisSocdMode = DEFAULT_SOCD_MODE_Y_AXIS;
+		#else
 		options.socdMode = SOCD_MODE_NEUTRAL;
-#endif
+		#endif
 		setGamepadOptions(options);
 	}
 

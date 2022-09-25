@@ -48,6 +48,8 @@
 // 3 - `SOCD_MODE_SECOND_INPUT_PRIORITY` - This is last priority SOCD.  EG. when you press and hold `up` then press `down` `down` will be registered.
 
 #define DEFAULT_SOCD_MODE SOCD_MODE_NEUTRAL
+#define DEFAULT_SOCD_MODE_X_AXIS SOCD_MODE_NONE
+#define DEFAULT_SOCD_MODE_Y_AXIS SOCD_MODE_NONE
 
 
 // This is the LEDs section.

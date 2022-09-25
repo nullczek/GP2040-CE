@@ -10,6 +10,34 @@
 #include "pico/stdlib.h"
 #include "bitmaps.h"
 
+inline std::string I2CDisplayAddon::getSocdAcronym(CARDINAL_SOCDMode cardinalMode)
+{
+	switch (cardinalMode)
+	{
+	case SOCD_MODE_NONE:
+		return "OFF";
+		break;
+	case SOCD_MODE_NEUTRAL_PRIORITY:
+		return "NTL";
+		break;
+	case SOCD_MODE_LAST_INPUT_PRIORITY:
+		return "LIP";
+		break;
+	case SOCD_MODE_FIRST_INPUT_PRIORITY:
+		return "FIP";
+		break;
+	case SOCD_MODE_CARDINAL_MIN_PRIORITY:
+		return "MIN";
+		break;
+	case SOCD_MODE_CARDINAL_MAX_PRIORITY:
+		return "MAX";
+		break;
+	default:
+		return "   ";
+		break;
+	}
+}
+
 bool I2CDisplayAddon::available() {
 	BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
 	return boardOptions.hasI2CDisplay && boardOptions.i2cSDAPin != -1 && boardOptions.i2cSCLPin != -1;
@@ -177,7 +205,7 @@ void I2CDisplayAddon::drawArcadeStick(int startX, int startY, int buttonRadius, 
 
 	// Stick
 	obdPreciseEllipse(&obd, startX + (buttonMargin / 2), startY + (buttonMargin / 2), buttonRadius * 1.25, buttonRadius * 1.25, 1, 0);
-	
+
 	if (pGamepad->pressedUp()) {
 		if (pGamepad->pressedLeft()) {
 			obdPreciseEllipse(&obd, startX + (buttonMargin / 5), startY + (buttonMargin / 5), buttonRadius, buttonRadius, 1, 1);
@@ -398,7 +426,7 @@ void I2CDisplayAddon::drawDancepadA(int startX, int startY, int buttonSize, int 
 void I2CDisplayAddon::drawDancepadB(int startX, int startY, int buttonSize, int buttonPadding)
 {
 	const int buttonMargin = buttonPadding + buttonSize;
-	
+
 	obdRectangle(&obd, startX, startY, startX + buttonSize, startY + buttonSize, 1, pGamepad->pressedB2()); // Up/Left
 	obdRectangle(&obd, startX, startY + buttonMargin * 2, startX + buttonSize, startY + buttonSize + buttonMargin * 2, 1, pGamepad->pressedB4()); // Down/Left
 	obdRectangle(&obd, startX + buttonMargin * 2, startY, startX + buttonSize + buttonMargin * 2, startY + buttonSize, 1, pGamepad->pressedB1()); // Up/Right
@@ -461,21 +489,37 @@ void I2CDisplayAddon::drawStatusBar(Gamepad * gamepad)
 			statusBar += "0";
 		statusBar += std::to_string(boardOptions.turboShotCount);
 	} else {
+		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
+		statusBar += "   "; // no turbo, don't show Txx setting
+		#else
 		statusBar += "    "; // no turbo, don't show Txx setting
+		#endif
 	}
 	switch (gamepad->options.dpadMode)
 	{
-
+		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
+		case DPAD_MODE_DIGITAL:      statusBar += "DP "; break;
+		case DPAD_MODE_LEFT_ANALOG:  statusBar += "LS "; break;
+		case DPAD_MODE_RIGHT_ANALOG: statusBar += "RS "; break;
+		#else
 		case DPAD_MODE_DIGITAL:      statusBar += " DP"; break;
 		case DPAD_MODE_LEFT_ANALOG:  statusBar += " LS"; break;
 		case DPAD_MODE_RIGHT_ANALOG: statusBar += " RS"; break;
+		#endif
 	}
 
-	switch (gamepad->options.socdMode)
-	{
-		case SOCD_MODE_NEUTRAL:               statusBar += " SOCD-N"; break;
-		case SOCD_MODE_UP_PRIORITY:           statusBar += " SOCD-U"; break;
-		case SOCD_MODE_SECOND_INPUT_PRIORITY: statusBar += " SOCD-L"; break;
-	}
+		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
+		statusBar += getSocdAcronym(gamepad->options.xAxisSocdMode);
+		statusBar += ",";
+		statusBar += getSocdAcronym(gamepad->options.yAxisSocdMode);
+		#else
+		switch (gamepad->options.socdMode)
+		{
+			case SOCD_MODE_NEUTRAL:               statusBar += " SOCD-N"; break;
+			case SOCD_MODE_UP_PRIORITY:           statusBar += " SOCD-U"; break;
+			case SOCD_MODE_SECOND_INPUT_PRIORITY: statusBar += " SOCD-L"; break;
+		}
+		#endif
+
 	drawText(0, 0, statusBar);
 }
