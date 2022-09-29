@@ -480,6 +480,8 @@ void I2CDisplayAddon::drawText(int x, int y, std::string text) {
 
 void I2CDisplayAddon::drawStatusBar(Gamepad *gamepad)
 {
+	BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
+
 	static bool hasTurbo = boardOptions.pinButtonTurbo != (uint8_t)-1;
 
 	// only update every STATUS_STRING_SCROLL_UPDATE_PERIOD_MS ms
@@ -487,8 +489,6 @@ void I2CDisplayAddon::drawStatusBar(Gamepad *gamepad)
 	{
 		// update last scroll time
 		lastScrollMillis = (int64_t)millis;
-
-		BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
 
 		// Limit to 21 chars with 6x8 font for now
 		statusBar.clear();
