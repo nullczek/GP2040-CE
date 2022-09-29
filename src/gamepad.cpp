@@ -143,11 +143,14 @@ GamepadOptions GamepadStorage::getGamepadOptions()
 		options.dpadMode = DpadMode::DPAD_MODE_DIGITAL; // Default?
 
 		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
-		options.xAxisSocdMode = DEFAULT_SOCD_MODE_X_AXIS;
-		options.yAxisSocdMode = DEFAULT_SOCD_MODE_Y_AXIS;
+		options.setXAxisSocdMode(DEFAULT_SOCD_MODE_X_AXIS);
+		options.setYAxisSocdMode(DEFAULT_SOCD_MODE_Y_AXIS);
 		#else
-		options.socdMode = SOCD_MODE_NEUTRAL;
+		options.setXAxisSocdMode(SOCD_MODE_NEUTRAL_PRIORITY);
+		options.setYAxisSocdMode(SOCD_MODE_NEUTRAL_PRIORITY);
 		#endif
+		
+		options.socdMode = SOCD_MODE_NEUTRAL;
 		setGamepadOptions(options);
 	}
 

@@ -69,6 +69,7 @@ public:
 	void drawWasdBox(int startX, int startY, int buttonRadius, int buttonPadding);
 	void drawArcadeStick(int startX, int startY, int buttonRadius, int buttonPadding);
 	void drawStatusBar(Gamepad*);
+	void drawText(int startX, int startY, int offset, std::string text);
 	void drawText(int startX, int startY, std::string text);
 	void initMenu(char**);
 	//Adding my stuff here, remember to sort before PR
@@ -92,18 +93,21 @@ public:
 	inline static std::string getSocdAcronym(CARDINAL_SOCDMode cardinalMode);
 	uint8_t ucBackBuffer[1024];
 	OBDISP obd;
-	std::string statusBar;
 	Gamepad* gamepad;
 	Gamepad* pGamepad;
-	private:
 
-	std::string *previousStatusBar = new std::string("");
-	uint_fast8_t scrollPosition = 0;
-	int_fast8_t scrollDirection = 1;
+protected:
+	std::string statusBar;
+	std::string turboString;
+	int font = 0;
+	int fontWidth = 6;
+	int scrollDirection = 1;
 	int statusBarOffset = 0;
-	int ticks = 0;
-	std::string scrolledStatusBar = "";
-	const uint_fast8_t screenMaxStrLen = 21;
+	const int SCREEN_MAX_STR_LENGTH = 21;
+	const int STATUS_STRING_SCROLL_UPDATE_PERIOD_MS = 250;
+	int stringPixelScrollRate = 1;
+	uint32_t millis;
+	int64_t lastScrollMillis = -1;
 };
 
 #endif

@@ -45,8 +45,19 @@ bool I2CDisplayAddon::available() {
 
 void I2CDisplayAddon::setup() {
 	BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
+
+	// TODO unnamed enum, handle in a better way
+	font = FONT_6x8;
+	// TODO better handling of font sizes vs layout
+	fontWidth = 6;
+	stringPixelScrollRate = 3; // number of pixels to scroll status bar on N ms cycle
+	// lastScrollMillis last time scroll was done
+	lastScrollMillis = millis = getMillis();
+	statusBar.clear();
+	turboString.clear();
+
 	obdI2CInit(&obd,
-	    boardOptions.displaySize,
+	  boardOptions.displaySize,
 		boardOptions.displayI2CAddress,
 		boardOptions.displayFlip,
 		boardOptions.displayInvert,
@@ -61,20 +72,17 @@ void I2CDisplayAddon::setup() {
 	clearScreen(1);
 	gamepad = Storage::getInstance().GetGamepad();
 	pGamepad = Storage::getInstance().GetProcessedGamepad();
-
 }
 
 void I2CDisplayAddon::process() {
-	//Gamepad * gamepad = Storage::getInstance().GetGamepad();
-	//Gamepad * pGamepad = Storage::getInstance().GetProcessedGamepad();
-
+	millis = getMillis();
 	clearScreen(0);
 	bool configMode = Storage::getInstance().GetConfigMode();
 	if (configMode == true ) {
 		drawStatusBar(gamepad);
 		drawText(0, 3, "[Web Config Mode]");
 		drawText(0, 4, std::string("GP2040-CE : ") + std::string(GP2040VERSION));
-	} else if (getMillis() < 7500 && SPLASH_MODE != NOSPLASH) {
+	} else if (millis < 7500 && SPLASH_MODE != NOSPLASH) {
 		drawSplashScreen(SPLASH_MODE, 90);
 	} else {
 		drawStatusBar(gamepad);
@@ -435,8 +443,7 @@ void I2CDisplayAddon::drawDancepadB(int startX, int startY, int buttonSize, int 
 
 void I2CDisplayAddon::drawSplashScreen(int splashMode, int splashSpeed)
 {
-    int mils = getMillis();
-    switch (splashMode)
+  switch (splashMode)
 	{
 		case STATICSPLASH: // Default, display static or custom image
             if ((sizeof(splashCustom) / sizeof(*splashCustom)) > 0) {
@@ -446,15 +453,15 @@ void I2CDisplayAddon::drawSplashScreen(int splashMode, int splashSpeed)
             }
 			break;
 		case CLOSEIN: // Close-in. Animate the GP2040 logo
-			obdDrawSprite(&obd, (uint8_t *)bootLogoTop, 43, 39, 6, 43, std::min<int>((mils / splashSpeed) - 39, 0), 1);
-			obdDrawSprite(&obd, (uint8_t *)bootLogoBottom, 80, 21, 10, 24, std::max<int>(64 - (mils / (splashSpeed * 2)), 44), 1);
+			obdDrawSprite(&obd, (uint8_t *)bootLogoTop, 43, 39, 6, 43, std::min<int>((millis / splashSpeed) - 39, 0), 1);
+			obdDrawSprite(&obd, (uint8_t *)bootLogoBottom, 80, 21, 10, 24, std::max<int>(64 - (millis / (splashSpeed * 2)), 44), 1);
 			break;
         case CLOSEINCUSTOM: // Close-in on custom image or delayed close-in if custom image does not exist
             if ((sizeof(splashCustom) / sizeof(*splashCustom)) > 0) {
                obdDrawSprite(&obd, (uint8_t *)splashCustom, 128, 64, 16, 0, 0, 1);
             }
-            if (mils > 2500) {
-                int milss = mils - 2500;
+            if (millis > 2500) {
+                int milss = millis - 2500;
                 obdRectangle(&obd, 0, 0, 127, 1 + (milss / splashSpeed), 0, 1);
                 obdRectangle(&obd, 0, 63, 127, 62 - (milss / (splashSpeed * 2)), 0, 1);
                 obdDrawSprite(&obd, (uint8_t *)bootLogoTop, 43, 39, 6, 43, std::min<int>((milss / splashSpeed) - 39, 0), 1);
@@ -464,62 +471,113 @@ void I2CDisplayAddon::drawSplashScreen(int splashMode, int splashSpeed)
 	}
 }
 
+void I2CDisplayAddon::drawText(int x, int y, int offSet, std::string text) {
+	obdWriteString(&obd, offSet, x, y, (char*)text.c_str(), font, 0, 0);
+}
 void I2CDisplayAddon::drawText(int x, int y, std::string text) {
-	obdWriteString(&obd, 0, x, y, (char*)text.c_str(), FONT_6x8, 0, 0);
+	drawText(x, y, 0, text);
 }
 
-void I2CDisplayAddon::drawStatusBar(Gamepad * gamepad)
+void I2CDisplayAddon::drawStatusBar(Gamepad *gamepad)
 {
-	BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
+	static bool hasTurbo = boardOptions.pinButtonTurbo != (uint8_t)-1;
 
-	// Limit to 21 chars with 6x8 font for now
-	statusBar.clear();
-
-	switch (gamepad->options.inputMode)
+	// only update every STATUS_STRING_SCROLL_UPDATE_PERIOD_MS ms
+	if ((lastScrollMillis == -1) || (int64_t)millis - lastScrollMillis > STATUS_STRING_SCROLL_UPDATE_PERIOD_MS)
 	{
-		case INPUT_MODE_HID:    statusBar += "DINPUT"; break;
-		case INPUT_MODE_SWITCH: statusBar += "SWITCH"; break;
-		case INPUT_MODE_XINPUT: statusBar += "XINPUT"; break;
-		case INPUT_MODE_CONFIG: statusBar += "CONFIG"; break;
-	}
+		// update last scroll time
+		lastScrollMillis = (int64_t)millis;
 
-	if ( boardOptions.pinButtonTurbo != (uint8_t)-1 ) {
-		statusBar += " T";
-		if ( boardOptions.turboShotCount < 10 ) // padding
-			statusBar += "0";
-		statusBar += std::to_string(boardOptions.turboShotCount);
-	} else {
-		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
-		statusBar += "   "; // no turbo, don't show Txx setting
-		#else
-		statusBar += "    "; // no turbo, don't show Txx setting
-		#endif
-	}
-	switch (gamepad->options.dpadMode)
-	{
-		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
-		case DPAD_MODE_DIGITAL:      statusBar += "DP "; break;
-		case DPAD_MODE_LEFT_ANALOG:  statusBar += "LS "; break;
-		case DPAD_MODE_RIGHT_ANALOG: statusBar += "RS "; break;
-		#else
-		case DPAD_MODE_DIGITAL:      statusBar += " DP"; break;
-		case DPAD_MODE_LEFT_ANALOG:  statusBar += " LS"; break;
-		case DPAD_MODE_RIGHT_ANALOG: statusBar += " RS"; break;
-		#endif
-	}
+		BoardOptions boardOptions = Storage::getInstance().getBoardOptions();
 
-		#if defined(DEFAULT_SOCD_MODE_X_AXIS) && defined(DEFAULT_SOCD_MODE_Y_AXIS)
-		statusBar += getSocdAcronym(gamepad->options.xAxisSocdMode);
-		statusBar += ",";
-		statusBar += getSocdAcronym(gamepad->options.yAxisSocdMode);
-		#else
-		switch (gamepad->options.socdMode)
+		// Limit to 21 chars with 6x8 font for now
+		statusBar.clear();
+
+		switch (gamepad->options.inputMode)
 		{
-			case SOCD_MODE_NEUTRAL:               statusBar += " SOCD-N"; break;
-			case SOCD_MODE_UP_PRIORITY:           statusBar += " SOCD-U"; break;
-			case SOCD_MODE_SECOND_INPUT_PRIORITY: statusBar += " SOCD-L"; break;
+		case INPUT_MODE_HID:
+			statusBar += "DIN";
+			break;
+		case INPUT_MODE_SWITCH:
+			statusBar += "NSW";
+			break;
+		case INPUT_MODE_XINPUT:
+			statusBar += "XIN";
+			break;
+		case INPUT_MODE_CONFIG:
+			statusBar += "CFG";
+			break;
 		}
-		#endif
 
-	drawText(0, 0, statusBar);
+		switch (gamepad->options.dpadMode)
+		{
+		case DPAD_MODE_DIGITAL:
+			statusBar += "(DP)";
+			break;
+		case DPAD_MODE_LEFT_ANALOG:
+			statusBar += "(LS)";
+			break;
+		case DPAD_MODE_RIGHT_ANALOG:
+			statusBar += "(RS)";
+			break;
+		}
+
+		statusBar += "  SOCD ";
+		statusBar += getSocdAcronym(gamepad->options.getXAxisSocdMode());
+		statusBar += ",";
+		statusBar += getSocdAcronym(gamepad->options.getYAxisSocdMode());
+
+		int displayDelta = (statusBar.length() - SCREEN_MAX_STR_LENGTH);
+		// only scroll if status screen length exceeds display width
+		if (displayDelta > 0)
+		{
+			// if we're displaying the rightmost part of the string
+			if (scrollDirection == 1)
+			{
+				// increase scroll offset if more of the string still needs to be displayed
+				if (statusBarOffset < (displayDelta * fontWidth))
+				{
+					statusBarOffset += (scrollDirection * stringPixelScrollRate) * fontWidth;
+				}
+				else
+				{
+					// if we've displayed the whole string, reverse scroll direction
+					scrollDirection = -1;
+				}
+			}
+			else if (scrollDirection == -1)
+			{
+				// scrolling in the other direction to show leftmost part of string
+				if (statusBarOffset > 0)
+				{
+					statusBarOffset += (scrollDirection * stringPixelScrollRate) * fontWidth;
+				}
+				else
+				{
+					scrollDirection = 1;
+				}
+			}
+		}
+		else
+		{
+			statusBarOffset = 0;
+		}
+
+		if (hasTurbo)
+		{
+			turboString.clear();
+			boardOptions.turboShotCount = (uint8_t)255;
+			turboString += "T ";
+			if (boardOptions.turboShotCount < 10) // padding
+				turboString += "0";
+			if (boardOptions.turboShotCount < 100) // padding
+				turboString += "0";
+
+			turboString += std::to_string(boardOptions.turboShotCount);
+		}
+	}
+
+	drawText(0, 0, statusBarOffset, statusBar);
+	if (hasTurbo)
+		drawText(0, 7, turboString); // use drawText(97, 7, turboString); for right hand side display with 6 pixel wide font
 }
